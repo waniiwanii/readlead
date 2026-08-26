@@ -3,9 +3,12 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { usePageAnnotations } from '../hooks/usePageAnnotations'
+import { COLOR_PALETTE } from '../lib/colorPalette'
 import ScaledPage from '../components/ScaledPage'
 import FixedPage from '../components/FixedPage'
 import CommentPanel from '../components/CommentPanel'
+
+const PEN_SWATCHES_COUNT = 8
 
 export default function Reader() {
   const { bookId } = useParams()
@@ -13,8 +16,17 @@ export default function Reader() {
   const [book, setBook] = useState(null)
   const [pages, setPages] = useState([])
   const [pageIndex, setPageIndex] = useState(0)
-  const [mode, setMode] = useState('read')
+  const [mode, setMode] = useState('read') // 'read' | 'pen'
+  const [tool, setTool] = useState('pen') // 'pen' | 'eraser'
+  const [penColor, setPenColor] = useState(profile?.color)
+  const [penWidth, setPenWidth] = useState(4)
+  const [penOpacity, setPenOpacity] = useState(1)
   const [activeAnnotation, setActiveAnnotation] = useState(null)
+
+  const swatches = [
+    profile?.color,
+    ...COLOR_PALETTE.filter((c) => c !== profile?.color),
+  ].slice(0, PEN_SWATCHES_COUNT)
 
   useEffect(() => {
     async function load() {
@@ -37,26 +49,19 @@ export default function Reader() {
     return <div className="reader-loading">불러오는 중...</div>
   }
 
-  async function handleAddUnderline(offsets) {
-    await addAnnotation({
-      book_id: book.id,
-      page_id: page.id,
-      user_id: profile.id,
-      type: 'underline',
-      color: profile.color,
-      data: offsets,
-    })
-  }
-
-  async function handleAddDoodle(data) {
+  async function handleAddStroke(stroke) {
     await addAnnotation({
       book_id: book.id,
       page_id: page.id,
       user_id: profile.id,
       type: 'doodle',
-      color: profile.color,
-      data,
+      color: stroke.color,
+      data: { points: stroke.points, width: stroke.width, opacity: stroke.opacity },
     })
+  }
+
+  async function handleEraseStroke(annotationId) {
+    await removeAnnotation(annotationId)
   }
 
   async function handleDeleteAnnotation(id) {
@@ -84,12 +89,58 @@ export default function Reader() {
         <button className={mode === 'read' ? 'active' : ''} onClick={() => setMode('read')}>
           읽기
         </button>
-        <button className={mode === 'underline' ? 'active' : ''} onClick={() => setMode('underline')}>
-          밑줄 긋기
+        <button className={mode === 'pen' ? 'active' : ''} onClick={() => setMode('pen')}>
+          펜
         </button>
-        <button className={mode === 'doodle' ? 'active' : ''} onClick={() => setMode('doodle')}>
-          낙서하기
-        </button>
+
+        {mode === 'pen' && (
+          <div className="pen-options">
+            <div className="pen-swatches">
+              {swatches.map((c) => (
+                <button
+                  key={c}
+                  className={`swatch${tool === 'pen' && penColor === c ? ' swatch--selected' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => {
+                    setTool('pen')
+                    setPenColor(c)
+                  }}
+                  aria-label={`펜 색상 ${c}`}
+                />
+              ))}
+            </div>
+
+            <label className="pen-slider">
+              굵기
+              <input
+                type="range"
+                min={2}
+                max={20}
+                value={penWidth}
+                onChange={(e) => setPenWidth(Number(e.target.value))}
+              />
+            </label>
+
+            <label className="pen-slider">
+              진하기
+              <input
+                type="range"
+                min={0.15}
+                max={1}
+                step={0.05}
+                value={penOpacity}
+                onChange={(e) => setPenOpacity(Number(e.target.value))}
+              />
+            </label>
+
+            <button
+              className={tool === 'eraser' ? 'active' : ''}
+              onClick={() => setTool(tool === 'eraser' ? 'pen' : 'eraser')}
+            >
+              지우개
+            </button>
+          </div>
+        )}
 
         <div className="reader-toolbar-spacer" />
 
@@ -111,11 +162,14 @@ export default function Reader() {
               page={page}
               annotations={annotations}
               profilesById={profilesById}
-              myColor={profile.color}
               myUserId={profile.id}
               mode={mode}
-              onAddUnderline={handleAddUnderline}
-              onAddDoodle={handleAddDoodle}
+              tool={tool}
+              penColor={penColor}
+              penWidth={penWidth}
+              penOpacity={penOpacity}
+              onAddStroke={handleAddStroke}
+              onEraseStroke={handleEraseStroke}
               onOpenThread={setActiveAnnotation}
             />
           </ScaledPage>

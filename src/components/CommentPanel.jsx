@@ -31,20 +31,16 @@ export default function CommentPanel({ annotation, profilesById, onClose, onDele
         <div>
           <span className="dot" style={{ background: annotation.color }} />
           <strong>{author?.nickname ?? '알 수 없음'}</strong>
-          <span className="muted"> · {annotation.type === 'doodle' ? '낙서' : '밑줄'}</span>
+          <span className="muted"> · 펜 자국</span>
         </div>
         <button className="icon-btn" onClick={onClose} aria-label="닫기">
           ✕
         </button>
       </div>
 
-      {annotation.type === 'underline' && (
-        <blockquote className="comment-panel-quote">{annotation.data.text}</blockquote>
-      )}
-
       {isOwner && (
         <button className="link-btn danger" onClick={() => onDeleteAnnotation(annotation.id)}>
-          내 {annotation.type === 'doodle' ? '낙서' : '밑줄'} 삭제
+          내 펜 자국 삭제
         </button>
       )}
 
