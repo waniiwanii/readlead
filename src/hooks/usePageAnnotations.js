@@ -52,7 +52,10 @@ export function usePageAnnotations(pageId) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'annotations', filter: `page_id=eq.${pageId}` },
         async (payload) => {
-          setAnnotations((prev) => [...prev, payload.new])
+          // 내가 방금 addAnnotation으로 낙관적 반영한 stroke도 realtime으로
+          // 그대로 되돌아온다(자기 자신에게도 브로드캐스트됨). id로 걸러야
+          // 같은 stroke가 배열에 두 번 들어가서 "작성자 여러 명"처럼 보이지 않는다.
+          setAnnotations((prev) => (prev.some((a) => a.id === payload.new.id) ? prev : [...prev, payload.new]))
           await loadProfilesFor([payload.new.user_id])
         }
       )
