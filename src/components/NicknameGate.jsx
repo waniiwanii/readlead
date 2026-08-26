@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function NicknameGate({ children }) {
@@ -6,6 +6,10 @@ export default function NicknameGate({ children }) {
   const [nickname, setNickname] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // React state가 리렌더되기 전에 더블클릭/중복 submit이 끼어들면
+  // 같은 닉네임으로 익명 계정이 두 번 생성되며 이메일 연결이 경합할 수 있다.
+  // 그 경쟁 상태를 막기 위해 상태와 별개로 동기적으로 체크되는 ref를 둔다.
+  const submittingRef = useRef(false)
 
   if (loading) {
     return <div className="gate-screen">불러오는 중...</div>
@@ -15,6 +19,8 @@ export default function NicknameGate({ children }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (submittingRef.current) return
+    submittingRef.current = true
     setError('')
     setBusy(true)
     try {
@@ -22,6 +28,7 @@ export default function NicknameGate({ children }) {
     } catch (err) {
       setError(err.message ?? '로그인에 실패했습니다.')
     } finally {
+      submittingRef.current = false
       setBusy(false)
     }
   }
@@ -40,6 +47,7 @@ export default function NicknameGate({ children }) {
           onChange={(e) => setNickname(e.target.value)}
           placeholder="닉네임 (예: 산책하는곰)"
           maxLength={20}
+          disabled={busy}
         />
         {error && <p className="gate-error">{error}</p>}
         <button type="submit" disabled={busy || !nickname.trim()}>
