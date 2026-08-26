@@ -3,10 +3,11 @@ import { useEffect, useRef } from 'react'
 // 두 개의 캔버스를 겹쳐서 쓴다.
 //  - committed: 이미 저장된 stroke들. strokes prop이 바뀔 때만(내 stroke 추가/삭제,
 //    다른 사람 stroke 실시간 수신) 다시 그린다.
-//  - live: 지금 그리고 있는 stroke 하나만. pointermove마다 다시 그리지만
-//    이 캔버스에는 그 한 개의 선만 있으므로 비용이 문서 전체 stroke 수와 무관하다.
-// 예전에는 캔버스 하나에 모든 stroke + 진행중인 선을 매 move마다 다시 그려서,
-// stroke가 쌓일수록 펜 반응이 느려지고 프레임이 밀렸다. 좌표계는 항상
+//  - live: 지금 그리고 있는 stroke 하나. move할 때마다 캔버스를 통째로
+//    지우고 처음부터 다시 그리지 않는다 - 직전 점에서 새 점까지 선분 하나만
+//    이어 그린다. 손을 안 떼고 여러 글자를 이어 쓰면 한 stroke에 점이
+//    수천 개까지 쌓이는데, 매번 전체를 다시 그리면 그만큼 뒤로 갈수록
+//    느려지고 프레임이 밀려서 깜박이는 것처럼 보인다. 좌표계는 항상
 // page_width x page_height 기준 고정 좌표계라 리사이즈와 무관하게 유효하다.
 export default function DoodleCanvas({
   width,
@@ -63,16 +64,38 @@ export default function DoodleCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strokes, width, height])
 
-  function redrawLive() {
+  function clearLive() {
     const canvas = liveRef.current
     if (!canvas) return
-    if (drawingRef.current) {
-      drawAllOn(canvas, [
-        { points: drawingRef.current.points, color, width: penWidth, opacity: penOpacity },
-      ])
-    } else {
-      canvas.getContext('2d').clearRect(0, 0, width, height)
-    }
+    canvas.getContext('2d').clearRect(0, 0, width, height)
+  }
+
+  function drawDot(pt) {
+    const canvas = liveRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    ctx.globalAlpha = penOpacity
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(pt.x, pt.y, penWidth / 2, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1
+  }
+
+  function drawSegment(from, to) {
+    const canvas = liveRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    ctx.globalAlpha = penOpacity
+    ctx.strokeStyle = color
+    ctx.lineWidth = penWidth
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(to.x, to.y)
+    ctx.stroke()
+    ctx.globalAlpha = 1
   }
 
   function toLocalPoint(clientX, clientY) {
@@ -107,7 +130,7 @@ export default function DoodleCanvas({
       // 버리고, 손가락이 다 떨어질 때까지 이후 이벤트는 무시한다.
       drawingRef.current = null
       erasedThisDragRef.current = new Set()
-      redrawLive()
+      clearLive()
       return
     }
 
@@ -124,8 +147,9 @@ export default function DoodleCanvas({
       eraseNear(pt)
       return
     }
+    clearLive()
     drawingRef.current = { points: [pt] }
-    redrawLive()
+    drawDot(pt)
   }
 
   function handlePointerMove(e) {
@@ -143,9 +167,11 @@ export default function DoodleCanvas({
     }
     if (!drawingRef.current) return
     for (const ev of events) {
-      drawingRef.current.points.push(toLocalPoint(ev.clientX, ev.clientY))
+      const pt = toLocalPoint(ev.clientX, ev.clientY)
+      const points = drawingRef.current.points
+      drawSegment(points[points.length - 1], pt)
+      points.push(pt)
     }
-    redrawLive()
   }
 
   function handlePointerUp(e) {
@@ -155,7 +181,7 @@ export default function DoodleCanvas({
     if (tool === 'eraser') return
     const finished = drawingRef.current
     drawingRef.current = null
-    redrawLive()
+    clearLive()
     if (finished && finished.points.length > 0) {
       onStrokeComplete?.({ points: finished.points, color, width: penWidth, opacity: penOpacity })
     }
