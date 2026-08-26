@@ -223,9 +223,11 @@ button:disabled {
   height: 100%;
   pointer-events: none;
 }
-/* 터치/펜 입력 중 브라우저가 스크롤·확대 제스처로 가로채면 선이 끊긴다. */
+/* 한 손가락 드래그는 브라우저의 스크롤 제스처로 가로채지 못하게 막아야 선이
+   안 끊기지만, 두 손가락 핀치줌은 그대로 브라우저가 처리하게 둬야 펜 모드에서도
+   읽기 모드로 안 바꾸고 바로 확대/축소할 수 있다. */
 .doodle-canvas--live {
-  touch-action: none;
+  touch-action: pinch-zoom;
 }
 .doodle-canvas-stack--active .doodle-canvas--live {
   pointer-events: auto;
