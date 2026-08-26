@@ -26,6 +26,11 @@ export default function DoodleCanvas({
   const drawingRef = useRef(null) // { points: [{x,y}] }
   const erasedThisDragRef = useRef(new Set())
   const activeRectRef = useRef(null)
+  // touch-action: pinch-zoom는 브라우저가 두 손가락 제스처를 줌으로 처리하게는
+  // 해주지만, 손가락 각각의 pointerdown/move는 우리한테도 그대로 들어온다.
+  // 두 번째 손가락이 닿는 순간(핀치줌 시작)을 감지해서 그리기를 취소해야
+  // 줌하는 동안 같이 선이 그어지지 않는다.
+  const activePointersRef = useRef(new Set())
 
   function drawPath(ctx, points, strokeColor, lineWidth, opacity = 1) {
     if (!points || points.length === 0) return
@@ -95,6 +100,17 @@ export default function DoodleCanvas({
 
   function handlePointerDown(e) {
     if (!enabled) return
+    activePointersRef.current.add(e.pointerId)
+
+    if (activePointersRef.current.size > 1) {
+      // 두 번째 손가락 = 핀치줌 시작. 지금까지 그리던 건 의도한 선이 아니므로
+      // 버리고, 손가락이 다 떨어질 때까지 이후 이벤트는 무시한다.
+      drawingRef.current = null
+      erasedThisDragRef.current = new Set()
+      redrawLive()
+      return
+    }
+
     e.currentTarget.setPointerCapture(e.pointerId)
     activeRectRef.current = liveRef.current.getBoundingClientRect()
     const pt = toLocalPoint(e.clientX, e.clientY)
@@ -109,6 +125,8 @@ export default function DoodleCanvas({
 
   function handlePointerMove(e) {
     if (!enabled) return
+    if (activePointersRef.current.size > 1) return // 핀치줌 중 - 그리기/지우기 무시
+
     // 스타일러스는 브라우저가 한 번에 몰아서 전달하는 pointermove 사이에
     // 더 촘촘한 표본(coalesced events)을 갖고 있다. 이걸 다 반영해야
     // 빠르게 움직일 때 선이 듬성듬성 끊겨 보이지 않는다.
@@ -125,8 +143,9 @@ export default function DoodleCanvas({
     redrawLive()
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(e) {
     if (!enabled) return
+    activePointersRef.current.delete(e.pointerId)
     activeRectRef.current = null
     if (tool === 'eraser') return
     const finished = drawingRef.current
