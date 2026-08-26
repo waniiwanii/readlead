@@ -1,0 +1,325 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f1e8;
+  color: #2b2b2b;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #d8d0bd;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+button.active {
+  background: #2b2b2b;
+  color: #fff;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: #8a8272;
+  font-size: 0.9em;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #457b9d;
+  text-decoration: none;
+  padding: 0;
+}
+.link-btn.danger {
+  color: #c9184a;
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ── Nickname gate ───────────────────────── */
+.gate-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.gate-card {
+  background: #fff;
+  padding: 32px;
+  border-radius: 16px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+.gate-card h1 {
+  margin-top: 0;
+}
+.gate-desc {
+  color: #6b6555;
+  font-size: 0.92em;
+  line-height: 1.5;
+}
+.gate-card input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 1rem;
+  border: 1px solid #d8d0bd;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.gate-card button {
+  width: 100%;
+  padding: 10px;
+  background: #2b2b2b;
+  color: #fff;
+}
+.gate-error {
+  color: #c9184a;
+  font-size: 0.9em;
+}
+
+/* ── Library ─────────────────────────────── */
+.library {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+.library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.library-desc {
+  color: #6b6555;
+  line-height: 1.6;
+}
+.reader-me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.book-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.book-card {
+  display: block;
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+.book-card h2 {
+  margin: 0 0 4px;
+}
+.book-source {
+  font-size: 0.8em;
+  color: #a89f8b;
+  margin-top: 8px;
+}
+
+/* ── Reader ──────────────────────────────── */
+.reader-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid #eee2cc;
+}
+.reader-title {
+  text-align: center;
+}
+.reader-title h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.reader-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: #fdfbf5;
+  border-bottom: 1px solid #eee2cc;
+}
+.reader-toolbar-spacer {
+  flex: 1;
+}
+.reader-loading {
+  padding: 60px;
+  text-align: center;
+}
+.reader-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 32px 24px;
+}
+.reader-page-area {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Fixed layout page ───────────────────── */
+.scaled-page-outer {
+  width: 100%;
+  max-width: 880px;
+  overflow: hidden;
+}
+.scaled-page-inner {
+  transform-origin: top left;
+}
+.fixed-page {
+  position: relative;
+  background: #fffdf7;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.page-text {
+  position: relative;
+  z-index: 1;
+  padding: 56px 48px;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 19px;
+  line-height: 2;
+  white-space: pre-wrap;
+}
+.page-doodle-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+.doodle-canvas {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.doodle-canvas--active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+.underline-span {
+  cursor: pointer;
+}
+
+/* ── Popover ─────────────────────────────── */
+.popover {
+  position: fixed;
+  transform: translate(-50%, -110%);
+  background: #2b2b2b;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  z-index: 50;
+  min-width: 140px;
+}
+.popover-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+.popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.popover-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.popover-list .type {
+  margin-left: auto;
+  opacity: 0.6;
+  font-size: 0.8em;
+}
+
+/* ── Comment panel ───────────────────────── */
+.comment-panel {
+  width: 300px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 24px;
+}
+.comment-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.icon-btn {
+  border: none;
+  background: none;
+  font-size: 1rem;
+  padding: 2px 6px;
+}
+.comment-panel-quote {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: #f5f1e8;
+  border-radius: 8px;
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+.comment-list {
+  display: grid;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+.comment-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.comment-item .dot {
+  margin-top: 5px;
+}
+.comment-nickname {
+  font-size: 0.8em;
+  font-weight: 600;
+  color: #6b6555;
+}
+.comment-content {
+  font-size: 0.92em;
+}
+.comment-form {
+  display: flex;
+  gap: 6px;
+}
+.comment-form input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #d8d0bd;
+  border-radius: 8px;
+}
