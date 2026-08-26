@@ -53,7 +53,15 @@ export default function FixedPage({
       return stroke && stroke.points.some((p) => Math.hypot(p.x - px, p.y - py) <= 12)
     })
     if (hits.length === 0) return
-    setPopover({ x: e.clientX, y: e.clientY, annotations: hits })
+
+    // 같은 사람이 그 자리에 겹쳐서 여러 번 그은 stroke가 있어도 팝오버에는
+    // 한 번만 뜨게 한다. 안 그러면 "작성자 N명"인데 같은 닉네임이 N번
+    // 나오는 것처럼 보여서 몇 명이 표시했는지 헷갈린다.
+    const byAuthor = new Map()
+    for (const a of hits) {
+      if (!byAuthor.has(a.user_id)) byAuthor.set(a.user_id, a)
+    }
+    setPopover({ x: e.clientX, y: e.clientY, annotations: [...byAuthor.values()] })
   }
 
   return (
