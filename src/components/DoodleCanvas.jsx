@@ -111,7 +111,12 @@ export default function DoodleCanvas({
       return
     }
 
-    e.currentTarget.setPointerCapture(e.pointerId)
+    // 손가락(touch)에 pointer capture를 걸면 브라우저가 그 손가락을 핀치줌
+    // 제스처의 일부로 인식하지 못할 수 있다. 펜/마우스는 핀치와 무관한
+    // 단일 접점이니 그대로 캡처해서 스트로크 추적을 안정적으로 유지한다.
+    if (e.pointerType !== 'touch') {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    }
     activeRectRef.current = liveRef.current.getBoundingClientRect()
     const pt = toLocalPoint(e.clientX, e.clientY)
     if (tool === 'eraser') {
