@@ -50,6 +50,32 @@ npm run seed
 공유마당 공식 원문 전문입니다. 자세한 내용은 `supabase/seed/content/README.md`를
 참고하세요.
 
+## 4. GitHub Pages 배포
+
+`.github/workflows/deploy.yml`이 main 브랜치에 push될 때마다(또는 Actions 탭에서
+수동으로) `dist/`를 빌드해 GitHub Pages로 배포합니다. 처음 한 번만 아래 두 가지를
+설정해주세요.
+
+1. **저장소 Secrets** — Settings → Secrets and variables → Actions →
+   New repository secret으로 다음 두 개를 추가:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+
+   (`.env`에 쓴 값과 동일합니다. 빌드 시 워크플로우가 이 값을 환경변수로 주입합니다.)
+
+2. **Pages 소스 설정** — Settings → Pages → Build and deployment → Source를
+   **GitHub Actions**로 선택 (처음 한 번만 필요).
+
+이후 main에 push하면 자동 배포되고, 배포 주소는 다음 형태입니다:
+
+```
+https://<계정 또는 organization>.github.io/readlead/
+```
+
+앱은 GitHub Pages 하위 경로(`/readlead/`)에서 서빙되도록 `vite.config.js`의
+`base`를 빌드 시에만 적용하고, 클라이언트 라우팅은 서버 rewrite가 필요 없는
+`HashRouter`를 씁니다(그래서 URL에 `#`이 붙습니다. 예: `.../readlead/#/book/xxx`).
+
 ## 데이터 모델
 
 | 테이블 | 설명 |
