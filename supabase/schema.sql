@@ -45,11 +45,10 @@ create table if not exists book_pages (
 );
 
 -- ────────────────────────────────────────────────────────────
--- annotations: 밑줄(underline) 또는 낙서(doodle).
--- underline data: { "start": number, "end": number, "text": string }
---   start/end는 해당 페이지 content의 문자 오프셋(0-based, end exclusive).
--- doodle data: { "paths": [ { "points": [{"x":number,"y":number}], "width": number } ] }
+-- annotations: 펜으로 그린 한 획(stroke). 밑줄도 이 펜으로 긋는다.
+-- doodle data: { "points": [{"x":number,"y":number}], "width": number, "opacity": number }
 --   좌표는 book_pages.page_width/page_height 기준의 고정 좌표계.
+--   'underline' 타입은 과거 텍스트-선택 기반 밑줄의 흔적으로 제약조건만 남아있다.
 -- ────────────────────────────────────────────────────────────
 create table if not exists annotations (
   id uuid primary key default gen_random_uuid(),
