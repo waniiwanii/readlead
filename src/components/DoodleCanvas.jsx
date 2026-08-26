@@ -25,6 +25,7 @@ export default function DoodleCanvas({
   const liveRef = useRef(null)
   const drawingRef = useRef(null) // { points: [{x,y}] }
   const erasedThisDragRef = useRef(new Set())
+  const activeRectRef = useRef(null)
 
   function drawPath(ctx, points, strokeColor, lineWidth, opacity = 1) {
     if (!points || points.length === 0) return
@@ -70,7 +71,11 @@ export default function DoodleCanvas({
   }
 
   function toLocalPoint(clientX, clientY) {
-    const rect = liveRef.current.getBoundingClientRect()
+    // getBoundingClientRect()는 레이아웃을 강제로 다시 계산시킬 수 있는 무거운 호출이다.
+    // 펜슬의 coalesced event까지 처리하면 한 번의 move에도 이 변환이 여러 번 필요한데,
+    // 매번 다시 재면 그만큼 그리는 게 화면에 늦게 반영된다(입력 지연). 드래그 시작 시
+    // 한 번만 재서 그 스트로크가 끝날 때까지 재사용한다.
+    const rect = activeRectRef.current ?? liveRef.current.getBoundingClientRect()
     const scaleX = width / rect.width
     const scaleY = height / rect.height
     return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY }
@@ -91,6 +96,7 @@ export default function DoodleCanvas({
   function handlePointerDown(e) {
     if (!enabled) return
     e.currentTarget.setPointerCapture(e.pointerId)
+    activeRectRef.current = liveRef.current.getBoundingClientRect()
     const pt = toLocalPoint(e.clientX, e.clientY)
     if (tool === 'eraser') {
       erasedThisDragRef.current = new Set()
@@ -120,7 +126,9 @@ export default function DoodleCanvas({
   }
 
   function handlePointerUp() {
-    if (!enabled || tool === 'eraser') return
+    if (!enabled) return
+    activeRectRef.current = null
+    if (tool === 'eraser') return
     const finished = drawingRef.current
     drawingRef.current = null
     redrawLive()
