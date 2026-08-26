@@ -77,14 +77,25 @@ export function usePageAnnotations(pageId) {
   }, [pageId, loadProfilesFor])
 
   const addAnnotation = useCallback(async (annotation) => {
+    // 화면에 즉시 반영해야 펜을 뗀 순간과 선이 보이는 순간 사이에 서버
+    // 왕복 시간만큼 아무것도 안 보이는 공백이 생기지 않는다. id를 미리
+    // 만들어서 로컬 상태에 먼저 넣고, 같은 id로 insert하면 나중에 오는
+    // realtime echo도 이미 있는 걸로 인식해 중복되지 않는다.
+    const id = crypto.randomUUID()
+    const optimistic = { ...annotation, id, created_at: new Date().toISOString() }
+    setAnnotations((prev) => [...prev, optimistic])
+
     const { data, error } = await supabase
       .from('annotations')
-      .insert(annotation)
+      .insert(optimistic)
       .select()
       .single()
-    if (error) throw error
-    // 낙관적 반영(같은 채널의 realtime echo는 중복 방지를 위해 id로 걸러짐)
-    setAnnotations((prev) => (prev.some((a) => a.id === data.id) ? prev : [...prev, data]))
+
+    if (error) {
+      setAnnotations((prev) => prev.filter((a) => a.id !== id))
+      throw error
+    }
+    setAnnotations((prev) => prev.map((a) => (a.id === id ? data : a)))
     return data
   }, [])
 
