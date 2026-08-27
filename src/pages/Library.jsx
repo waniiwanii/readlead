@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { seedOnFirstRunIfEmpty } from '../lib/seedOnFirstRun'
+import { seedMissingBooks } from '../lib/seedOnFirstRun'
 
 export default function Library() {
   const { profile, logout } = useAuth()
@@ -10,7 +10,7 @@ export default function Library() {
 
   useEffect(() => {
     async function load() {
-      await seedOnFirstRunIfEmpty()
+      await seedMissingBooks()
       const { data } = await supabase.from('books').select('*').order('created_at', { ascending: true })
       setBooks(data ?? [])
     }
