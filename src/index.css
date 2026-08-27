@@ -139,7 +139,17 @@ button:disabled {
 }
 
 /* ── Reader ──────────────────────────────── */
+/* 헤더/툴바는 위에, 페이지 넘김 바는 아래에 고정하고, 그 사이 본문
+   영역만 스크롤한다. 그래야 아래로 내려서 읽는 동안 모드 전환이나
+   페이지 넘기기를 위해 다시 위/아래로 스크롤할 필요가 없다. */
+.reader {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
 .reader-header {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -155,6 +165,7 @@ button:disabled {
   font-size: 1.1rem;
 }
 .reader-toolbar {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -162,14 +173,14 @@ button:disabled {
   background: #fdfbf5;
   border-bottom: 1px solid #eee2cc;
 }
-.reader-toolbar-spacer {
-  flex: 1;
-}
 .reader-loading {
   padding: 60px;
   text-align: center;
 }
 .reader-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   align-items: flex-start;
   gap: 24px;
@@ -179,6 +190,16 @@ button:disabled {
   flex: 1;
   display: flex;
   justify-content: center;
+}
+.reader-pagebar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 24px;
+  background: #fff;
+  border-top: 1px solid #eee2cc;
 }
 
 /* ── Fixed layout page ───────────────────── */

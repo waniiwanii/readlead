@@ -141,18 +141,6 @@ export default function Reader() {
             </button>
           </div>
         )}
-
-        <div className="reader-toolbar-spacer" />
-
-        <button disabled={pageIndex === 0} onClick={() => setPageIndex((i) => i - 1)}>
-          이전 페이지
-        </button>
-        <span className="muted">
-          {pageIndex + 1} / {pages.length}
-        </span>
-        <button disabled={pageIndex === pages.length - 1} onClick={() => setPageIndex((i) => i + 1)}>
-          다음 페이지
-        </button>
       </div>
 
       <div className="reader-body">
@@ -183,6 +171,18 @@ export default function Reader() {
             onDeleteAnnotation={handleDeleteAnnotation}
           />
         )}
+      </div>
+
+      <div className="reader-pagebar">
+        <button disabled={pageIndex === 0} onClick={() => setPageIndex((i) => i - 1)}>
+          이전 페이지
+        </button>
+        <span className="muted">
+          {pageIndex + 1} / {pages.length}
+        </span>
+        <button disabled={pageIndex === pages.length - 1} onClick={() => setPageIndex((i) => i + 1)}>
+          다음 페이지
+        </button>
       </div>
     </div>
   )
