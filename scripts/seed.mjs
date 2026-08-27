@@ -1,5 +1,5 @@
 // 관리자용 시딩 스크립트. service role key로 RLS를 우회해서
-// books/book_pages에 예시 작품을 직접 넣는다.
+// books/book_pages에 SEED_BOOKS 목록을 직접 넣는다.
 //
 //   npm run seed
 //
@@ -22,14 +22,27 @@ if (!url || !serviceRoleKey) {
 
 const supabase = createClient(url, serviceRoleKey)
 
-const SEED_BOOK = {
-  title: '운수 좋은 날',
-  author: '현진건',
-  source: '한국저작권위원회 공유마당 (만료 저작물)',
-  license_note:
-    '저작권 만료 공유저작물입니다. 이 저장소에 들어있는 텍스트는 시연용 발췌본이니, ' +
-    '전체 원문은 공유마당에서 내려받아 supabase/seed/content/unsu-joheun-nal.txt를 교체해주세요.',
-}
+const SEED_BOOKS = [
+  {
+    meta: {
+      title: '운수 좋은 날',
+      author: '현진건',
+      source: '한국저작권위원회 공유마당 (만료 저작물)',
+      license_note: '저작권 만료 공유저작물입니다.',
+    },
+    contentFile: 'unsu-joheun-nal.txt',
+  },
+  {
+    meta: {
+      title: 'Pride and Prejudice',
+      author: 'Jane Austen',
+      source: 'Project Gutenberg (public domain, first published 1813)',
+      license_note:
+        'Public domain worldwide. Text via Project Gutenberg (gutenberg.org/ebooks/1342).',
+    },
+    contentFile: 'pride-and-prejudice.txt',
+  },
+]
 
 const MAX_CHARS_PER_PAGE = 900
 
@@ -55,22 +68,22 @@ function paginate(text) {
   return pages.length ? pages : ['']
 }
 
-async function main() {
+async function seedBook({ meta, contentFile }) {
   const { data: existing } = await supabase
     .from('books')
     .select('id')
-    .ilike('title', SEED_BOOK.title)
+    .ilike('title', meta.title)
     .maybeSingle()
 
   if (existing) {
-    console.log(`이미 "${SEED_BOOK.title}" 책이 있습니다 (id=${existing.id}). 건너뜁니다.`)
+    console.log(`이미 "${meta.title}" 책이 있습니다 (id=${existing.id}). 건너뜁니다.`)
     return
   }
 
-  const contentPath = path.join(__dirname, '../supabase/seed/content/unsu-joheun-nal.txt')
+  const contentPath = path.join(__dirname, '../supabase/seed/content', contentFile)
   const raw = readFileSync(contentPath, 'utf-8')
 
-  const { data: book, error: bookError } = await supabase.from('books').insert(SEED_BOOK).select().single()
+  const { data: book, error: bookError } = await supabase.from('books').insert(meta).select().single()
   if (bookError) throw bookError
 
   const pages = paginate(raw).map((content, i) => ({
@@ -82,7 +95,13 @@ async function main() {
   const { error: pagesError } = await supabase.from('book_pages').insert(pages)
   if (pagesError) throw pagesError
 
-  console.log(`시딩 완료: "${SEED_BOOK.title}" (${pages.length}페이지)`)
+  console.log(`시딩 완료: "${meta.title}" (${pages.length}페이지)`)
+}
+
+async function main() {
+  for (const book of SEED_BOOKS) {
+    await seedBook(book)
+  }
 }
 
 main().catch((err) => {
