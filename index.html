@@ -139,6 +139,9 @@
     font-weight:700; font-size:17px; padding:7px 20px; border-radius:20px; cursor:pointer; }
   .ch-btn.active{ border-color:var(--peach); background:#FFEFE6; color:var(--peach-dark); }
   .rec-btn.judge{ background:#8E7CC3; }
+  .rec-btn.big{ font-size:17px; padding:12px 26px; }
+  .fallback{ text-align:center; font-size:12px; color:var(--muted); margin-top:8px; }
+  .fallback summary{ cursor:pointer; }
   .rec-btn.recording{ background:#D9534F; }
   .rec-status.judge-status{ font-weight:700; }
   .rec-status.judge-status.pass{ color:var(--forest); }
@@ -227,16 +230,22 @@
       <button class="listen-btn" id="listenSentenceBtn">🔊 문장 듣기</button>
     </div>
     <div class="rec-row">
-      <button class="rec-btn" id="recBtn">🎙️ 녹음하기</button>
-      <button class="rec-btn play" id="recPlayBtn" disabled>▶ 내 목소리 듣기</button>
+      <button class="rec-btn judge big" id="goBtn">🎤 읽어보기 (녹음 + 검사)</button>
     </div>
     <div class="rec-row">
-      <button class="rec-btn judge" id="judgeBtn">🎤 읽기 검사</button>
+      <button class="rec-btn play" id="recPlayBtn" disabled>▶ 내 목소리 듣기</button>
     </div>
     <div class="rec-status" id="recStatus"></div>
     <div class="rec-status judge-status" id="judgeStatus"></div>
     <div class="rec-status heard" id="heardText"></div>
     <label class="gate-toggle"><input type="checkbox" id="gateChk" checked> 검사를 통과해야 다음으로 넘어가기</label>
+    <details class="fallback">
+      <summary>녹음과 검사가 같이 안 될 때</summary>
+      <div class="rec-row">
+        <button class="rec-btn" id="recOnlyBtn">🎙️ 녹음만</button>
+        <button class="rec-btn judge" id="judgeOnlyBtn">🎤 검사만</button>
+      </div>
+    </details>
 
     <div class="helper placeholder" id="helperBox">
       단어나 ‿ 표시를 톡 누르면 여기에 설명이 나와요
@@ -544,20 +553,19 @@ translateBtn.addEventListener('click', () => {
 prevBtn.addEventListener('click', () => { if(current > 0){ current--; render(); } });
 nextBtn.addEventListener('click', () => { if(current < sentences.length - 1){ current++; render(); } });
 
-// ================= 챕터 전환 / 녹음 / 읽기 검사 =================
+// ================= 챕터 전환 / 읽기(녹음 + 검사) =================
 let chapterKey = 'ch18';
 const passed = {}, attempts = {}, clips = {};
 function keyFor(i){ return chapterKey + ':' + (i === undefined ? current : i); }
 
 const SRClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognizer = null, listening = false, recording = false, mr = null, mstream = null, chunks = [], audioEl = null;
-const gateChk = document.getElementById('gateChk');
-const judgeBtn = document.getElementById('judgeBtn');
-const judgeStatus = document.getElementById('judgeStatus');
-const heardText = document.getElementById('heardText');
-const recBtn = document.getElementById('recBtn');
-const recPlayBtn = document.getElementById('recPlayBtn');
-const recStatus = document.getElementById('recStatus');
+let recognizer = null, busy = false, listening = false, recording = false;
+let mr = null, mstream = null, chunks = [], audioEl = null, sessionKey = null, stopTimer = null;
+const $id = id => document.getElementById(id);
+const gateChk = $id('gateChk'), goBtn = $id('goBtn'), recPlayBtn = $id('recPlayBtn');
+const recStatus = $id('recStatus'), judgeStatus = $id('judgeStatus'), heardText = $id('heardText');
+const recOnlyBtn = $id('recOnlyBtn'), judgeOnlyBtn = $id('judgeOnlyBtn');
+const IDLE_LABEL = '🎤 읽어보기 (녹음 + 검사)';
 
 function gateActive(){ return !!SRClass && gateChk.checked; }
 function updateNextLock(){
@@ -570,22 +578,27 @@ function updateNextLock(){
 gateChk.addEventListener('change', updateNextLock);
 
 function clearMarks(){ document.querySelectorAll('.word-unit.mismatch, .word-unit.ok').forEach(el => el.classList.remove('mismatch','ok')); }
-function removeSkip(){ const l = document.getElementById('skipLink'); if(l) l.remove(); }
+function removeSkip(){ const l = $id('skipLink'); if(l) l.remove(); }
+function setJudge(msg, cls){ judgeStatus.textContent = msg; judgeStatus.className = 'rec-status judge-status' + (cls ? ' ' + cls : ''); }
+function setButtons(){
+  goBtn.textContent = busy ? '⏹ 끝내기' : IDLE_LABEL;
+  goBtn.classList.toggle('recording', busy);
+  recPlayBtn.disabled = busy || !clips[keyFor()];
+}
+function maybeFinish(){ if(!listening && !recording){ busy = false; setButtons(); } }
+
 function resetJudgeUI(){
+  clearTimeout(stopTimer);
   if(listening && recognizer){ try{ recognizer.abort(); }catch(e){} }
   if(recording && mr){ try{ mr.stop(); }catch(e){} }
   if(audioEl){ audioEl.pause(); }
-  listening = false;
-  judgeBtn.textContent = '🎤 읽기 검사'; judgeBtn.disabled = false;
-  judgeStatus.textContent = passed[keyFor()] ? '🎉 이 문장은 통과했어요!' : '';
-  judgeStatus.className = 'rec-status judge-status' + (passed[keyFor()] ? ' pass' : '');
-  heardText.textContent = '';
-  recStatus.textContent = '';
-  recBtn.textContent = clips[keyFor()] ? '🎙️ 다시 녹음' : '🎙️ 녹음하기';
-  recBtn.classList.remove('recording');
-  recPlayBtn.disabled = !clips[keyFor()];
+  listening = false; busy = recording;   // 녹음 정리가 끝나면 maybeFinish가 busy를 푼다
+  if(!recording) busy = false;
+  setButtons();
+  setJudge(passed[keyFor()] ? '🎉 이 문장은 통과했어요!' : '', passed[keyFor()] ? 'pass' : '');
+  heardText.textContent = ''; recStatus.textContent = '';
   clearMarks(); removeSkip();
-  if(!SRClass){ judgeStatus.textContent = '이 브라우저는 읽기 검사를 지원하지 않아요 (안드로이드/PC 크롬을 써보세요).'; }
+  if(!SRClass){ setJudge('이 브라우저는 읽기 검사를 지원하지 않아요 (안드로이드/PC 크롬을 써보세요).', ''); }
 }
 
 function loadChapter(k){
@@ -596,39 +609,7 @@ function loadChapter(k){
 }
 document.querySelectorAll('.ch-btn').forEach(b => b.addEventListener('click', () => { if(b.dataset.k !== chapterKey) loadChapter(b.dataset.k); }));
 
-// ---- 녹음 (내 목소리 듣기) ----
-recBtn.addEventListener('click', async () => {
-  if(recording){ mr && mr.stop(); return; }
-  if(listening){ recStatus.textContent = '읽기 검사가 끝난 뒤에 녹음해 주세요.'; return; }
-  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)){
-    recStatus.textContent = '이 브라우저는 녹음을 지원하지 않아요. https 주소의 크롬/사파리에서 열어 주세요.'; return;
-  }
-  try{ mstream = await navigator.mediaDevices.getUserMedia({audio:true}); }
-  catch(e){ recStatus.textContent = '마이크를 켤 수 없어요. 마이크 권한을 허용했는지 확인해 주세요.'; return; }
-  const k = keyFor(); chunks = [];
-  mr = new MediaRecorder(mstream);
-  mr.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
-  mr.onstop = () => {
-    mstream.getTracks().forEach(t => t.stop());
-    recording = false; recBtn.classList.remove('recording');
-    if(chunks.length){
-      if(clips[k]) URL.revokeObjectURL(clips[k]);
-      clips[k] = URL.createObjectURL(new Blob(chunks, {type: mr.mimeType || 'audio/webm'}));
-      if(k === keyFor()){ recStatus.textContent = '✅ 녹음 완료! ▶ 버튼으로 들어보세요.'; }
-    } else if(k === keyFor()){ recStatus.textContent = '녹음된 소리가 없어요. 다시 해볼까요?'; }
-    if(k === keyFor()){ recBtn.textContent = clips[k] ? '🎙️ 다시 녹음' : '🎙️ 녹음하기'; recPlayBtn.disabled = !clips[k]; }
-  };
-  mr.start(); recording = true;
-  recBtn.textContent = '⏹ 녹음 끝내기'; recBtn.classList.add('recording');
-  recStatus.textContent = '🎧 녹음 중이에요. 문장을 읽어보세요!';
-});
-recPlayBtn.addEventListener('click', () => {
-  const u = clips[keyFor()]; if(!u) return;
-  if(audioEl){ audioEl.pause(); }
-  audioEl = new Audio(u); audioEl.play();
-});
-
-// ---- 읽기 검사 (음성 인식) ----
+// ---- 읽기 검사 점수 계산 ----
 function normWords(t){ return t.toLowerCase().replace(/[\u2018\u2019]/g,"'").replace(/[^a-z' ]/g,' ').split(/\s+/).filter(Boolean); }
 function lev1(a,b){
   if(a===b) return true;
@@ -649,11 +630,13 @@ function scoreReading(target, heardList){
 }
 function passLimit(n){ return n <= 3 ? 1.0 : 0.6; }
 
+// ---- 음성 인식(검사) ----
 if(SRClass){
   recognizer = new SRClass();
   recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 3;
   recognizer.onresult = e => {
     const alts = []; for(let i=0;i<e.results[0].length;i++) alts.push(e.results[0][i].transcript);
+    if(sessionKey !== keyFor()) return;
     const target = sentences[current][0];
     const r = scoreReading(target, alts);
     heardText.textContent = '들린 말: ' + r.heard;
@@ -664,37 +647,96 @@ if(SRClass){
     });
     if(r.ratio >= passLimit(normWords(target).length)){
       passed[keyFor()] = true;
-      judgeStatus.textContent = '🎉 참 잘 읽었어요!'; judgeStatus.className = 'rec-status judge-status pass';
-      removeSkip(); updateNextLock();
+      setJudge('🎉 참 잘 읽었어요!', 'pass'); removeSkip(); updateNextLock();
     } else {
       attempts[keyFor()] = (attempts[keyFor()] || 0) + 1;
-      judgeStatus.textContent = '🤔 주황색 단어를 다시 읽어볼까요? (' + Math.round(r.ratio*100) + '%)';
-      judgeStatus.className = 'rec-status judge-status fail';
-      if(attempts[keyFor()] >= 2 && !document.getElementById('skipLink')){
+      setJudge('🤔 주황색 단어를 다시 읽어볼까요? (' + Math.round(r.ratio*100) + '%)', 'fail');
+      if(attempts[keyFor()] >= 2 && !$id('skipLink')){
         const l = document.createElement('span'); l.id = 'skipLink'; l.className = 'skip-link';
         l.textContent = '그래도 다음으로 넘어갈래요';
-        l.addEventListener('click', () => { passed[keyFor()] = true; judgeStatus.textContent = ''; clearMarks(); removeSkip(); updateNextLock(); });
+        l.addEventListener('click', () => { passed[keyFor()] = true; setJudge('', ''); clearMarks(); removeSkip(); updateNextLock(); });
         heardText.insertAdjacentElement('afterend', l);
       }
     }
   };
   recognizer.onerror = e => {
-    listening = false; judgeBtn.textContent = '🎤 읽기 검사'; judgeBtn.disabled = false;
+    if(e.error === 'aborted') return;
     const m = {'not-allowed':'마이크 사용을 허락해 주세요.','service-not-allowed':'마이크 사용을 허락해 주세요.',
-      'no-speech':'소리가 안 들렸어요. 다시 눌러서 읽어볼까요?','network':'인터넷 연결이 필요해요.','audio-capture':'마이크를 찾을 수 없어요.'};
-    if(e.error !== 'aborted'){ judgeStatus.textContent = m[e.error] || '음성 인식에 문제가 생겼어요. 다시 시도해 주세요.'; judgeStatus.className = 'rec-status judge-status fail'; }
+      'no-speech':'소리가 안 들렸어요. 다시 눌러서 읽어볼까요?','network':'인터넷 연결이 필요해요.',
+      'audio-capture':'검사가 녹음과 같이 마이크를 쓰지 못했어요. 아래 "녹음과 검사가 같이 안 될 때"에서 따로 해보세요.'};
+    if(sessionKey === keyFor()) setJudge(m[e.error] || '음성 인식에 문제가 생겼어요. 다시 시도해 주세요.', 'fail');
   };
-  recognizer.onend = () => { listening = false; judgeBtn.textContent = '🎤 읽기 검사'; judgeBtn.disabled = false; };
+  recognizer.onend = () => {
+    listening = false;
+    if(recording){ stopTimer = setTimeout(() => { if(mr && mr.state !== 'inactive') mr.stop(); }, 500); }
+    maybeFinish();
+  };
 }
-judgeBtn.addEventListener('click', () => {
-  if(!recognizer){ alert('이 브라우저는 읽기 검사를 지원하지 않아요. 안드로이드나 PC의 최신 크롬에서 써보세요.'); return; }
-  if(listening) return;
-  if(recording){ recStatus.textContent = '녹음을 끝낸 뒤에 검사해 주세요.'; return; }
+
+// ---- 녹음 마무리 ----
+function finishRecording(){
+  if(mstream) mstream.getTracks().forEach(t => t.stop());
+  recording = false;
+  const k = sessionKey, same = (k === keyFor());
+  const blob = new Blob(chunks, {type: (mr && mr.mimeType) || 'audio/webm'});
+  if(blob.size > 1500){
+    if(clips[k]) URL.revokeObjectURL(clips[k]);
+    clips[k] = URL.createObjectURL(blob);
+    if(same) recStatus.textContent = '✅ 녹음 완료! ▶ 버튼으로 들어보세요.';
+  } else if(same){
+    recStatus.textContent = '녹음이 비어 있어요. 이 기기에서는 녹음과 검사를 같이 못 할 수 있어요. 아래 "녹음과 검사가 같이 안 될 때"를 써보세요.';
+  }
+  maybeFinish();
+}
+
+// ---- 한 번 누르면 녹음 + 검사 ----
+async function startSession(wantRec, wantJudge){
+  if(busy){
+    if(listening && recognizer){ try{ recognizer.stop(); }catch(e){} }
+    if(recording && mr && mr.state !== 'inactive'){ clearTimeout(stopTimer); mr.stop(); }
+    return;
+  }
   if(window.speechSynthesis) window.speechSynthesis.cancel();
-  listening = true; judgeBtn.textContent = '🎧 듣고 있어요...'; judgeBtn.disabled = true;
-  judgeStatus.textContent = '지금 문장을 읽어보세요!'; judgeStatus.className = 'rec-status judge-status';
-  heardText.textContent = ''; clearMarks();
-  try{ recognizer.start(); }catch(e){ listening = false; judgeBtn.textContent = '🎤 읽기 검사'; judgeBtn.disabled = false; }
+  if(audioEl){ audioEl.pause(); }
+  if(wantJudge && !recognizer){
+    if(!wantRec){ alert('이 브라우저는 읽기 검사를 지원하지 않아요. 안드로이드나 PC의 최신 크롬에서 써보세요.'); return; }
+    wantJudge = false;
+  }
+  sessionKey = keyFor();
+  clearMarks(); removeSkip(); heardText.textContent = ''; recStatus.textContent = ''; setJudge('', '');
+  if(wantRec){
+    if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)){
+      recStatus.textContent = '이 브라우저는 녹음을 지원하지 않아요. https 주소의 크롬/사파리에서 열어 주세요.';
+      if(!wantJudge) return; wantRec = false;
+    } else {
+      try{
+        mstream = await navigator.mediaDevices.getUserMedia({audio:true});
+        chunks = []; mr = new MediaRecorder(mstream);
+        mr.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+        mr.onstop = finishRecording;
+        mr.start(); recording = true;
+      }catch(err){
+        recStatus.textContent = '마이크를 켤 수 없어요. 마이크 권한을 허용했는지 확인해 주세요.';
+        return;
+      }
+    }
+  }
+  busy = true; setButtons();
+  if(wantJudge){
+    try{ recognizer.start(); listening = true; }
+    catch(err){ listening = false; setJudge('검사를 시작하지 못했어요. 다시 눌러 주세요.', 'fail'); }
+  }
+  if(listening) setJudge('🎧 지금 문장을 읽어보세요! 다 읽으면 잠시 기다리거나 ⏹를 눌러요.', '');
+  else if(recording) recStatus.textContent = '🎧 녹음 중이에요. 다 읽으면 ⏹를 눌러요.';
+  if(!listening && !recording){ busy = false; setButtons(); }
+}
+goBtn.addEventListener('click', () => startSession(true, true));
+recOnlyBtn.addEventListener('click', () => startSession(true, false));
+judgeOnlyBtn.addEventListener('click', () => startSession(false, true));
+recPlayBtn.addEventListener('click', () => {
+  const u = clips[keyFor()]; if(!u) return;
+  if(audioEl){ audioEl.pause(); }
+  audioEl = new Audio(u); audioEl.play();
 });
 
 render();
