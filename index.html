@@ -152,6 +152,23 @@
   .word-unit.ok .word{ background:#E4F3E6; }
   .skip-link{ display:block; text-align:center; font-size:12px; color:var(--faint); text-decoration:underline; margin-top:6px; cursor:pointer; }
   .nav-btn.next.locked{ opacity:.5; }
+
+  .app{ max-width:660px; }
+  .stage{ display:flex; gap:6px; align-items:flex-start; }
+  .stage .card{ flex:1; min-width:0; }
+  .side-btn{ position:sticky; top:36vh; flex:0 0 42px; width:42px; height:96px; border:none; border-radius:21px;
+    background:var(--peach); color:#fff; font-size:22px; cursor:pointer; box-shadow:0 4px 10px rgba(255,140,90,.35);
+    -webkit-tap-highlight-color: transparent; }
+  .side-btn:active{ transform:scale(.94); }
+  .side-btn:disabled{ opacity:.35; box-shadow:none; }
+  .side-btn.locked{ background:#B9AFA3; box-shadow:none; }
+  .act-row{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:12px; }
+  .act-btn{ border:none; color:#fff; font-family:'Gaegu', sans-serif; font-weight:700; font-size:15px;
+    padding:10px 14px; border-radius:20px; cursor:pointer; }
+  .act-btn.listen{ background:var(--forest); } .act-btn.rec{ background:var(--peach); }
+  .act-btn.play{ background:var(--link); } .act-btn.judge{ background:#8E7CC3; }
+  .act-btn.recording{ background:#D9534F; animation: recpulse 1s infinite; }
+  .act-btn:disabled{ opacity:.4; } .act-btn:active{ transform:scale(.96); }
   .translate-btn{
     margin-top:14px; width:100%; border:none; background:#E4F3E6; color:var(--forest-dark);
     font-family:'Gaegu', sans-serif; font-weight:700; font-size:16px; padding:11px; border-radius:14px; cursor:pointer;
@@ -222,30 +239,22 @@
   </div>
   <div class="progress-row" id="progressRow"></div>
 
+  <div class="stage">
+  <button class="side-btn" id="prevBtn" aria-label="이전 문장">◀</button>
   <div class="card">
     <div class="sentence" id="sentenceBox"></div>
     <div class="legend"><b>‿</b> 표시를 누르면 단어들이 이어져서 나는 소리를 배울 수 있어요</div>
     <div class="hint">👉 먼저 소리 내서 읽어보고, 막히는 단어를 눌러보세요</div>
-    <div class="listen-row">
-      <button class="listen-btn" id="listenSentenceBtn">🔊 문장 듣기</button>
-    </div>
-    <div class="rec-row">
-      <button class="rec-btn judge big" id="goBtn">🎤 읽어보기 (녹음 + 검사)</button>
-    </div>
-    <div class="rec-row">
-      <button class="rec-btn play" id="recPlayBtn" disabled>▶ 내 목소리 듣기</button>
+    <div class="act-row">
+      <button class="act-btn listen" id="listenSentenceBtn">🔊 문장 듣기</button>
+      <button class="act-btn rec" id="recBtn">🎙️ 녹음</button>
+      <button class="act-btn play" id="recPlayBtn" disabled>▶ 내 목소리</button>
+      <button class="act-btn judge" id="judgeBtn">🎤 읽기 검사</button>
     </div>
     <div class="rec-status" id="recStatus"></div>
     <div class="rec-status judge-status" id="judgeStatus"></div>
     <div class="rec-status heard" id="heardText"></div>
     <label class="gate-toggle"><input type="checkbox" id="gateChk" checked> 검사를 통과해야 다음으로 넘어가기</label>
-    <details class="fallback">
-      <summary>녹음과 검사가 같이 안 될 때</summary>
-      <div class="rec-row">
-        <button class="rec-btn" id="recOnlyBtn">🎙️ 녹음만</button>
-        <button class="rec-btn judge" id="judgeOnlyBtn">🎤 검사만</button>
-      </div>
-    </details>
 
     <div class="helper placeholder" id="helperBox">
       단어나 ‿ 표시를 톡 누르면 여기에 설명이 나와요
@@ -254,10 +263,7 @@
     <button class="translate-btn" id="translateBtn">🌏 우리말 뜻 보기</button>
     <div class="trans-box" id="transBox"></div>
   </div>
-
-  <div class="nav-row">
-    <button class="nav-btn prev" id="prevBtn">◀ 이전</button>
-    <button class="nav-btn next" id="nextBtn">다음 ▶</button>
+  <button class="side-btn" id="nextBtn" aria-label="다음 문장">▶</button>
   </div>
   <div class="counter" id="counterText"></div>
 
@@ -405,7 +411,7 @@ const progressRow = document.getElementById('progressRow');
 const listenSentenceBtn = document.getElementById('listenSentenceBtn');
 listenSentenceBtn.addEventListener('click', () => {
   const [text] = sentences[current];
-  speak(text, 0.85);
+  speak(text, 0.43);
 });
 
 function buildDots(){
@@ -477,6 +483,7 @@ function onWordTap(span, key){
   span.classList.add('active');
   const info = wordDict[key];
   const cleanWord = span.textContent.replace(/[^A-Za-z']/g,'');
+  speak(cleanWord, 0.75);
 
   const phonHtml = info.phon.map(p => {
     let svgs = '';
@@ -562,10 +569,9 @@ const SRClass = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognizer = null, busy = false, listening = false, recording = false;
 let mr = null, mstream = null, chunks = [], audioEl = null, sessionKey = null, stopTimer = null;
 const $id = id => document.getElementById(id);
-const gateChk = $id('gateChk'), goBtn = $id('goBtn'), recPlayBtn = $id('recPlayBtn');
+const gateChk = $id('gateChk'), recBtn = $id('recBtn'), judgeBtn = $id('judgeBtn'), recPlayBtn = $id('recPlayBtn');
 const recStatus = $id('recStatus'), judgeStatus = $id('judgeStatus'), heardText = $id('heardText');
-const recOnlyBtn = $id('recOnlyBtn'), judgeOnlyBtn = $id('judgeOnlyBtn');
-const IDLE_LABEL = '🎤 읽어보기 (녹음 + 검사)';
+let sessionMode = 'rec';
 
 function gateActive(){ return !!SRClass && gateChk.checked; }
 function updateNextLock(){
@@ -573,7 +579,7 @@ function updateNextLock(){
   const locked = gateActive() && !passed[keyFor()];
   nextBtn.disabled = atEnd || locked;
   nextBtn.classList.toggle('locked', !atEnd && locked);
-  nextBtn.textContent = (!atEnd && locked) ? '🔒 다음' : '다음 ▶';
+  nextBtn.textContent = (!atEnd && locked) ? '🔒' : '▶';
 }
 gateChk.addEventListener('change', updateNextLock);
 
@@ -581,8 +587,11 @@ function clearMarks(){ document.querySelectorAll('.word-unit.mismatch, .word-uni
 function removeSkip(){ const l = $id('skipLink'); if(l) l.remove(); }
 function setJudge(msg, cls){ judgeStatus.textContent = msg; judgeStatus.className = 'rec-status judge-status' + (cls ? ' ' + cls : ''); }
 function setButtons(){
-  goBtn.textContent = busy ? '⏹ 끝내기' : IDLE_LABEL;
-  goBtn.classList.toggle('recording', busy);
+  const recBusy = busy && sessionMode === 'rec', judgeBusy = busy && sessionMode === 'judge';
+  recBtn.textContent = recBusy ? '⏹ 끝내기' : (clips[keyFor()] ? '🎙️ 다시 녹음' : '🎙️ 녹음');
+  judgeBtn.textContent = judgeBusy ? '⏹ 끝내기' : '🎤 읽기 검사';
+  recBtn.classList.toggle('recording', recBusy); judgeBtn.classList.toggle('recording', judgeBusy);
+  recBtn.disabled = busy && !recBusy; judgeBtn.disabled = busy && !judgeBusy;
   recPlayBtn.disabled = busy || !clips[keyFor()];
 }
 function maybeFinish(){ if(!listening && !recording){ busy = false; setButtons(); } }
@@ -663,7 +672,7 @@ if(SRClass){
     if(e.error === 'aborted') return;
     const m = {'not-allowed':'마이크 사용을 허락해 주세요.','service-not-allowed':'마이크 사용을 허락해 주세요.',
       'no-speech':'소리가 안 들렸어요. 다시 눌러서 읽어볼까요?','network':'인터넷 연결이 필요해요.',
-      'audio-capture':'검사가 녹음과 같이 마이크를 쓰지 못했어요. 아래 "녹음과 검사가 같이 안 될 때"에서 따로 해보세요.'};
+      'audio-capture':'마이크를 찾을 수 없어요.'};
     if(sessionKey === keyFor()) setJudge(m[e.error] || '음성 인식에 문제가 생겼어요. 다시 시도해 주세요.', 'fail');
   };
   recognizer.onend = () => {
@@ -684,7 +693,7 @@ function finishRecording(){
     clips[k] = URL.createObjectURL(blob);
     if(same) recStatus.textContent = '✅ 녹음 완료! ▶ 버튼으로 들어보세요.';
   } else if(same){
-    recStatus.textContent = '녹음이 비어 있어요. 이 기기에서는 녹음과 검사를 같이 못 할 수 있어요. 아래 "녹음과 검사가 같이 안 될 때"를 써보세요.';
+    recStatus.textContent = '녹음된 소리가 거의 없어요. 다시 해볼까요?';
   }
   maybeFinish();
 }
@@ -702,7 +711,7 @@ async function startSession(wantRec, wantJudge){
     if(!wantRec){ alert('이 브라우저는 읽기 검사를 지원하지 않아요. 안드로이드나 PC의 최신 크롬에서 써보세요.'); return; }
     wantJudge = false;
   }
-  sessionKey = keyFor();
+  sessionKey = keyFor(); sessionMode = wantRec ? 'rec' : 'judge';
   clearMarks(); removeSkip(); heardText.textContent = ''; recStatus.textContent = ''; setJudge('', '');
   if(wantRec){
     if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)){
@@ -730,9 +739,8 @@ async function startSession(wantRec, wantJudge){
   else if(recording) recStatus.textContent = '🎧 녹음 중이에요. 다 읽으면 ⏹를 눌러요.';
   if(!listening && !recording){ busy = false; setButtons(); }
 }
-goBtn.addEventListener('click', () => startSession(true, true));
-recOnlyBtn.addEventListener('click', () => startSession(true, false));
-judgeOnlyBtn.addEventListener('click', () => startSession(false, true));
+recBtn.addEventListener('click', () => startSession(true, false));
+judgeBtn.addEventListener('click', () => startSession(false, true));
 recPlayBtn.addEventListener('click', () => {
   const u = clips[keyFor()]; if(!u) return;
   if(audioEl){ audioEl.pause(); }
@@ -746,7 +754,7 @@ render();
   let ALL = [], deck = [], pos = 0, flipped = false, status = [];
   const $ = id => document.getElementById(id);
   let vocabOn = false;
-  const readEls = () => [$('progressRow'), document.querySelector('.card'), document.querySelector('.nav-row'), $('counterText')];
+  const readEls = () => [$('progressRow'), document.querySelector('.card'), document.querySelector('.stage'), $('counterText')];
   function showTab(v){
     vocabOn = v;
     readEls().forEach(e => e.style.display = v ? 'none' : '');
