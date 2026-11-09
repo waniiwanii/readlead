@@ -25,6 +25,9 @@ button:disabled{opacity:.42;cursor:default}
 .between{justify-content:space-between}
 .muted{color:var(--muted);font-size:.92rem}
 .english{font-weight:720;font-size:clamp(1.25rem,4.5vw,1.75rem);line-height:1.55;overflow-wrap:anywhere;margin:14px 0}
+.tapWord{display:inline;min-height:0;padding:0 .06em;border:0;border-radius:4px;background:transparent;color:inherit;font:inherit;text-decoration:underline;text-decoration-color:#91abc9;text-decoration-thickness:1px;text-underline-offset:.18em}
+.tapWord:hover,.tapWord[aria-pressed=true]{background:#dcecff;color:#173a77}
+#wordLookup{margin:10px 0}
 .meaning{background:var(--mint);padding:12px;border-radius:10px}
 .progress{margin:0;font-variant-numeric:tabular-nums}
 .footer{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
@@ -55,6 +58,7 @@ li{margin-bottom:7px}
 <p class="progress muted" id="readProgress"></p>
 <progress id="readBar" aria-label="읽은 문장 수"></progress>
 <p id="sentenceText" class="english" lang="en"></p>
+<p id="wordLookup" class="meaning" aria-live="polite" hidden></p>
 <div class="row">
 <button class="primary" id="sentenceAudio">🔊 듣기</button>
 <button id="slowAudio">🐢 천천히 듣기</button>
@@ -66,7 +70,7 @@ li{margin-bottom:7px}
 <button id="markRead" aria-pressed="false">읽었어요 ✓</button>
 <button id="nextSentence">다음 →</button>
 </div>
-<p class="muted">영어를 듣고 소리 내어 읽은 다음 ‘읽었어요’를 눌러요.</p>
+<p class="muted">영어 단어를 누르면 발음과 뜻을 확인할 수 있어요. 문장을 따라 읽은 뒤 ‘읽었어요’를 눌러요.</p>
 </section>
 <section id="words" hidden aria-labelledby="wordTitle">
 <div class="card">
@@ -93,6 +97,8 @@ li{margin-bottom:7px}
 <script>
 const story = [["My second story is about love and loss.", "제 두 번째 이야기는 사랑과 상실에 관한 것입니다."], ["I was lucky — I found what I loved to do early in life.", "저는 운이 좋았습니다. 어릴 때부터 제가 정말 좋아하는 일을 찾았으니까요."], ["Woz and I started Apple in my parents’ garage when I was 20.", "스무 살 때 워즈와 저는 부모님 집 차고에서 애플을 시작했습니다."], ["We worked hard, and in 10 years Apple had grown from just the two of us in a garage into a $2 billion company with over 4,000 employees.", "우리는 열심히 일했고, 10년 만에 애플은 차고에서 두 사람이 시작한 곳에서 직원 4천 명이 넘는 20억 달러 규모의 회사로 성장했습니다."], ["We had just released our finest creation — the Macintosh — a year earlier, and I had just turned 30.", "우리는 1년 전에 최고의 작품인 매킨토시를 출시했고, 저는 막 서른 살이 되었습니다."], ["And then I got fired.", "그런데 저는 해고됐습니다."], ["How can you get fired from a company you started?", "자기가 세운 회사에서 어떻게 해고될 수 있을까요?"], ["Well, as Apple grew we hired someone who I thought was very talented to run the company with me, and for the first year or so things went well.", "애플이 성장하면서 저와 함께 회사를 운영할 재능 있는 사람을 고용했고, 처음 1년쯤은 일이 잘 풀렸습니다."], ["But then our visions of the future began to diverge and eventually we had a falling out.", "하지만 우리가 그리는 미래가 달라지기 시작했고, 결국 사이가 틀어졌습니다."], ["When we did, our Board of Directors sided with him.", "그때 이사회는 그의 편에 섰습니다."], ["So at 30 I was out.", "그래서 저는 서른 살에 회사를 떠나야 했습니다."], ["And very publicly out.", "그 사실을 세상 사람들이 다 알았습니다."], ["What had been the focus of my entire adult life was gone, and it was devastating.", "성인이 된 뒤 제 삶의 중심이었던 일이 사라졌고, 저는 큰 충격을 받았습니다."], ["I really didn’t know what to do for a few months.", "몇 달 동안 정말 무엇을 해야 할지 몰랐습니다."], ["I felt that I had let the previous generation of entrepreneurs down — that I had dropped the baton as it was being passed to me.", "앞 세대의 창업가들을 실망시킨 기분이었습니다. 그들이 건네준 바통을 제가 떨어뜨린 것 같았습니다."], ["I met with David Packard and Bob Noyce and tried to apologize for screwing up so badly.", "데이비드 패커드와 밥 노이스를 만나 일을 그렇게 망친 것에 대해 사과하려 했습니다."], ["I was a very public failure, and I even thought about running away from the valley.", "제 실패를 세상 사람들이 다 알았고, 실리콘밸리를 떠날 생각까지 했습니다."], ["But something slowly began to dawn on me — I still loved what I did.", "하지만 한 가지가 서서히 분명해졌습니다. 저는 여전히 제가 하던 일을 사랑했습니다."], ["The turn of events at Apple had not changed that one bit.", "애플에서 벌어진 일도 그 마음을 조금도 바꾸지 못했습니다."], ["I had been rejected, but I was still in love.", "저는 내쳐졌지만, 그 일은 여전히 좋았습니다."], ["And so I decided to start over.", "그래서 다시 시작하기로 했습니다."], ["I didn’t see it then, but it turned out that getting fired from Apple was the best thing that could have ever happened to me.", "그때는 몰랐지만, 애플에서 해고된 일은 제게 일어날 수 있었던 최고의 일이었습니다."], ["The heaviness of being successful was replaced by the lightness of being a beginner again, less sure about everything.", "성공한 사람이라는 부담이 사라지고, 모든 것이 조금 낯선 초보자로 돌아가니 마음이 가벼워졌습니다."], ["It freed me to enter one of the most creative periods of my life.", "덕분에 저는 인생에서 가장 창의적이었던 시기 중 하나를 맞을 수 있었습니다."], ["During the next five years, I started a company named NeXT, another company named Pixar, and fell in love with an amazing woman who would become my wife.", "그 뒤 5년 동안 넥스트와 픽사라는 회사를 세웠고, 훗날 제 아내가 된 멋진 여성과 사랑에 빠졌습니다."], ["Pixar went on to create the world’s first computer animated feature film, Toy Story, and is now the most successful animation studio in the world.", "픽사는 세계 최초의 컴퓨터 장편 애니메이션인 토이 스토리를 만들었고, 지금은 세계에서 가장 성공한 애니메이션 제작사입니다."], ["In a remarkable turn of events, Apple bought NeXT, I returned to Apple, and the technology we developed at NeXT is at the heart of Apple’s current renaissance.", "놀랍게도 애플은 넥스트를 인수했고, 저는 애플로 돌아갔습니다. 넥스트에서 개발한 기술은 지금 애플이 다시 성장하는 데 핵심이 되었습니다."], ["And Laurene and I have a wonderful family together.", "로린과 저는 함께 행복한 가정을 이루었습니다."], ["I’m pretty sure none of this would have happened if I hadn’t been fired from Apple.", "애플에서 해고되지 않았다면 이 일들은 하나도 일어나지 않았을 거라고 생각합니다."], ["It was awful tasting medicine, but I guess the patient needed it.", "맛은 끔찍한 약이었지만, 환자인 제게는 필요한 약이었던 것 같습니다."], ["Sometimes life hits you in the head with a brick.", "살다 보면 벽돌로 머리를 맞은 듯한 일이 생기기도 합니다."], ["Don’t lose faith.", "믿음을 잃지 마세요."], ["I’m convinced that the only thing that kept me going was that I loved what I did.", "제가 계속 나아갈 수 있었던 건 제가 하던 일을 사랑했기 때문이라고 확신합니다."], ["You’ve got to find what you love.", "여러분이 사랑하는 것을 찾아야 합니다."], ["And that is as true for your work as it is for your lovers.", "사랑하는 사람을 찾는 것만큼 일에서도 그렇습니다."], ["Your work is going to fill a large part of your life, and the only way to be truly satisfied is to do what you believe is great work.", "일은 여러분 인생의 큰 부분을 차지합니다. 진정으로 만족하려면 스스로 훌륭하다고 믿는 일을 해야 합니다."], ["And the only way to do great work is to love what you do.", "그리고 훌륭한 일을 하려면 자신이 하는 일을 사랑해야 합니다."], ["If you haven’t found it yet, keep looking.", "아직 찾지 못했다면 계속 찾아보세요."], ["Don’t settle.", "아무 일에나 안주하지 마세요."], ["As with all matters of the heart, you’ll know when you find it.", "마음이 움직이는 일이라면, 찾았을 때 스스로 알아차릴 겁니다."], ["And, like any great relationship, it just gets better and better as the years roll on.", "좋은 관계가 그렇듯, 시간이 흐를수록 점점 더 좋아질 겁니다."], ["So keep looking until you find it.", "그러니 찾을 때까지 계속 찾아보세요."], ["Don’t settle.", "아무 일에나 안주하지 마세요."]];
 const vocabulary = [["dawn", "새벽, 동이 트다, 서서히 깨닫다"], ["combination", "조합, 결합"], ["subtle", "미묘한, 알아차리기 어려운"], ["practical", "실용적인, 실제에 도움이 되는"], ["application", "지원, 신청서, 적용"], ["proportionally", "비례해서, 같은 비율로"], ["approach", "다가가다, 접근 방법"], ["karma", "업보, 행동이 돌아와 낳는 결과"], ["connect", "잇다, 연결하다"], ["dot", "점"], ["destiny", "운명"], ["gut", "장, 직감"], ["garage", "차고, 자동차를 두는 곳"], ["fire / hire", "해고하다, 불 / 고용하다"], ["employer / employee", "고용주 / 직원"], ["public / publicly", "공공의, 공개적인 / 공개적으로"], ["devastate / devastating", "큰 피해를 주다 / 큰 충격을 주는"], ["diverge", "갈라지다, 서로 다른 방향으로 가다"], ["heaviness / lightness", "무거움, 부담 / 가벼움, 홀가분함"], ["creative", "창의적인"], ["replace", "대신하다, 교체하다"], ["reject", "거절하다, 받아들이지 않다"], ["failure", "실패"], ["apologize", "사과하다"]];
+const wordGloss = {"$2": "2달러. 뒤에 billion이 붙으면 20억 달러", "10": "열, 10", "20": "스물, 20", "30": "서른, 30", "4,000": "4천", "a": "하나의, 어떤. 명사 앞에 붙어요", "an": "하나의, 어떤. 명사 앞에 붙어요", "about": "~에 관해, 약", "adult": "어른의, 성인의", "again": "다시", "all": "모두, 모든", "amazing": "놀라운, 멋진", "and": "그리고, ~와", "animated": "애니메이션으로 만든", "animation": "애니메이션", "another": "또 다른", "any": "어떤 ~이든", "apologize": "사과하다", "apple": "애플 회사", "apple's": "애플의", "as": "~처럼, ~할 때, ~하면서", "at": "~에, ~에서", "away": "멀리, 떠나서", "awful": "끔찍한, 아주 나쁜", "badly": "심하게, 몹시", "baton": "바통, 이어달리기에서 넘겨주는 막대", "be": "~이다, ~에 있다", "been": "~이다, ~에 있다", "being": "~이다, ~에 있다", "is": "~이다, ~에 있다", "was": "~이었다, ~에 있었다", "become": "~이 되다", "began": "시작했다", "beginner": "초보자, 처음 시작하는 사람", "believe": "믿다, ~라고 생각하다", "best": "가장 좋은, 최고의", "better": "더 좋은, 더 나아지는", "billion": "10억", "bit": "조금, 작은 부분", "board": "이사회. 회사의 중요한 결정을 내리는 사람들", "bob": "밥, 사람 이름", "bought": "샀다, 인수했다", "brick": "벽돌", "but": "하지만, 그런데", "by": "~에 의해, ~로", "can": "~할 수 있다", "changed": "바꿨다, 달라졌다", "company": "회사", "computer": "컴퓨터", "convinced": "확신하는, 틀림없다고 믿는", "could": "~할 수 있었다, ~할 수도 있었다", "create": "만들다", "creation": "만들어 낸 것, 작품", "creative": "창의적인, 새롭게 만들어 내는", "current": "현재의, 지금의", "david": "데이비드, 사람 이름", "dawn": "동이 트다, 차츰 분명해지다", "decided": "결정했다", "devastating": "큰 충격을 주는", "developed": "개발했다, 만들어 냈다", "did": "했다. 물음이나 강조에도 쓰여요", "didn't": "~하지 않았다", "directors": "회사 이사들", "diverge": "갈라지다, 서로 달라지다", "do": "하다. 물음에도 쓰여요", "don't": "~하지 마세요, ~하지 않는다", "down": "아래로", "dropped": "떨어뜨렸다", "during": "~동안", "earlier": "더 일찍, ~전에", "early": "일찍, 이른 시기에", "employees": "직원들", "enter": "들어가다, 시작하다", "entire": "전체의, 온", "entrepreneurs": "창업가들, 사업을 시작하는 사람들", "even": "심지어, ~까지", "events": "일어난 일들, 사건들", "eventually": "결국, 마침내", "ever": "어느 때든, 지금까지", "everything": "모든 것", "failure": "실패, 실패한 사람", "faith": "믿음", "falling": "떨어지는", "family": "가족, 가정", "feature": "특징, 영화에서는 장편", "fell": "떨어졌다", "felt": "느꼈다, ~한 기분이었다", "few": "몇몇, 조금", "fill": "채우다", "film": "영화", "find": "찾다, 발견하다", "finest": "가장 훌륭한", "fired": "해고된, 직장에서 잘린", "first": "첫 번째, 처음", "five": "다섯", "focus": "중심, 가장 중요하게 여긴 것", "for": "~을 위해, ~동안", "found": "찾았다, 발견했다", "freed": "자유롭게 해 주었다", "from": "~에서, ~로부터", "future": "미래", "garage": "차고, 자동차를 두는 곳", "generation": "세대", "get": "얻다, ~하게 되다", "gets": "얻다, ~하게 되다", "getting": "얻다, ~하게 되다", "got": "얻다, ~하게 되다", "going": "가고 있는", "gone": "사라진, 떠난", "great": "훌륭한, 아주 좋은", "grew": "자랐다, 성장했다", "grown": "자랐다, 성장했다", "guess": "~인 것 같다, 짐작하다", "had": "가지다. 다른 동사 앞에서는 완료를 나타내요", "have": "가지다. 다른 동사 앞에서는 완료를 나타내요", "hadn't": "~하지 않았었다", "happened": "일어났다, 벌어졌다", "hard": "열심히, 힘들게", "haven't": "아직 ~하지 않았다", "head": "머리", "heart": "마음, 중심", "heaviness": "무거움, 마음의 부담", "him": "그를, 그에게", "hired": "고용했다, 일할 사람을 뽑았다", "hits": "친다, 때린다", "how": "어떻게", "i": "나, 저는", "i'm": "나는 ~이다, 나는 ~하고 있다", "if": "만약 ~라면", "in": "~안에, ~에, ~후에", "into": "~안으로, ~로 변하여", "it": "그것, 앞에서 말한 일", "just": "막, 바로, 그저", "keep": "계속하다, 계속하게 했다", "kept": "계속하다, 계속하게 했다", "know": "알다", "large": "큰, 많은", "laurene": "로린, 잡스의 아내 이름", "less": "덜, 더 적게", "let": "~하게 두다", "life": "삶, 인생", "lightness": "가벼움, 홀가분함", "like": "~처럼, 좋아하다", "looking": "보고 있는, 찾고 있는", "lose": "잃다", "loss": "상실, 소중한 것을 잃음", "love": "사랑하다, 아주 좋아하다, 사랑", "loved": "사랑하다, 아주 좋아하다, 사랑", "lovers": "사랑하는 사람들", "lucky": "운이 좋은", "macintosh": "매킨토시, 애플의 컴퓨터 이름", "matters": "일들, 문제들", "me": "나를, 나에게", "medicine": "약", "met": "만났다", "months": "개월, 달", "most": "가장, 대부분", "my": "나의, 내", "named": "~라는 이름의", "needed": "필요했다", "next": "다음, 그 뒤의", "none": "하나도 없음", "not": "~아니다, ~하지 않다", "now": "지금", "noyce": "노이스, 사람의 성", "of": "~의, ~중에서", "on": "~위에, ~에", "one": "하나, 한 사람", "only": "오직, 유일한", "or": "또는, ~쯤", "our": "우리의", "out": "밖으로, 나가서", "over": "~이 넘는, 위로, 다시", "packard": "패커드, 사람의 성", "parents": "부모님", "part": "부분", "passed": "넘겨주었다, 전달되었다", "patient": "환자, 치료를 받는 사람", "periods": "기간들, 시기들", "pixar": "픽사, 애니메이션 회사", "pretty": "꽤, 상당히", "previous": "이전의, 앞선", "public": "공개적인, 많은 사람에게 알려진", "publicly": "공개적으로, 모두가 알게", "really": "정말", "rejected": "거절당했다, 내쳐졌다", "relationship": "관계, 사람 사이의 연결", "released": "출시했다, 세상에 내놓았다", "remarkable": "놀라운, 눈에 띄는", "renaissance": "부흥, 다시 활발해지고 성장하는 때", "replaced": "대체되었다, 다른 것으로 바뀌었다", "returned": "돌아갔다, 돌아왔다", "roll": "구르다, 이어지다", "run": "달리다, 운영하다", "running": "달리다, 운영하다", "satisfied": "만족한", "screwing": "망치는", "second": "두 번째", "see": "보다, 이해하다", "settle": "안주하다, 마음에 덜 드는 것에 만족하고 멈추다", "sided": "편을 들었다", "slowly": "천천히, 서서히", "so": "그래서, 그렇게, 아주", "someone": "누군가, 어떤 사람", "something": "무언가, 어떤 것", "sometimes": "때때로, 가끔", "start": "시작하다, 시작했다", "started": "시작하다, 시작했다", "still": "여전히, 아직도", "story": "이야기", "studio": "제작사, 작품을 만드는 곳", "successful": "성공한", "sure": "확신하는, 확실한", "talented": "재능 있는", "tasting": "맛이 ~한", "technology": "기술", "that": "그것, 그. 뒤에 설명을 이어 주기도 해요", "the": "그. 가리키는 대상이 분명할 때 명사 앞에 붙어요", "then": "그때, 그러고 나서", "thing": "일, 것", "things": "일, 것", "this": "이것, 이", "thought": "생각했다", "to": "~에, ~에게, ~하기 위해. 동사 앞에 붙어 ~하는 것을 나타내기도 해요", "together": "함께", "toy": "장난감", "tried": "~하려고 했다, 노력했다", "true": "사실인, 맞는", "truly": "진정으로, 정말로", "turn": "돌다, 변화", "turned": "돌았다, ~이 되었다", "two": "둘, 두", "until": "~할 때까지", "up": "위로", "us": "우리를, 우리에게", "valley": "계곡. 여기서는 실리콘밸리", "very": "아주, 매우", "visions": "앞으로의 모습에 대한 생각이나 계획", "way": "방법, 길", "we": "우리, 우리는", "well": "잘, 글쎄", "went": "갔다, 진행됐다", "what": "무엇, ~하는 것", "when": "언제, ~할 때", "who": "누구, ~하는 사람", "wife": "아내", "with": "~와 함께, ~을 가진, ~로", "woman": "여성", "wonderful": "아주 좋은, 멋진", "work": "일, 일하다, 일했다", "worked": "일, 일하다, 일했다", "world": "세계, 세계의", "world's": "세계, 세계의", "would": "~할 것이다, ~했을 것이다", "woz": "워즈, 스티브 워즈니악의 별명", "year": "해, 년", "years": "해, 년", "yet": "아직", "you": "너, 여러분", "you'll": "너는 ~할 것이다, 여러분은 ~할 것이다", "you've": "여러분이 ~했다. 완료를 나타내는 you have의 줄임말", "your": "너의, 여러분의"};
+const phraseGloss = {"4": [["$2 billion", "20억 달러"], ["over 4,000", "4천 명이 넘는"]], "5": [["a year earlier", "1년 전에"], ["turned 30", "서른 살이 되었다"]], "6": [["got fired", "해고됐다"]], "7": [["get fired", "해고되다"]], "8": [["run the company", "회사를 운영하다"], ["or so", "~쯤"], ["went well", "일이 잘 풀렸다"]], "9": [["a falling out", "사이가 틀어짐, 다툼"]], "10": [["Board of Directors", "이사회"], ["sided with", "~의 편을 들었다"]], "11": [["was out", "회사를 떠나게 되었다"]], "12": [["publicly out", "회사를 떠난 사실이 공개적으로 알려짐"]], "15": [["let the previous generation of entrepreneurs down", "앞 세대 창업가들을 실망시켰다"], ["dropped the baton", "바통을 떨어뜨렸다. 이어받은 일을 제대로 해내지 못했다는 비유"]], "16": [["screwing up", "일을 망치는 것"]], "17": [["running away", "도망가는 것"]], "18": [["dawn on me", "내게 서서히 분명해지다, 차츰 깨닫다"]], "19": [["turn of events", "상황의 변화"], ["one bit", "조금도"]], "20": [["in love", "사랑하는. 여기서는 하던 일을 여전히 좋아한다는 뜻"]], "21": [["start over", "처음부터 다시 시작하다"]], "22": [["turned out", "알고 보니 ~였다"], ["getting fired", "해고되는 것"]], "23": [["was replaced by", "~로 바뀌었다"]], "25": [["fell in love", "사랑에 빠졌다"], ["NeXT", "넥스트, 잡스가 세운 회사"]], "26": [["went on to create", "그 뒤에 ~을 만들었다"], ["feature film", "장편 영화"], ["Toy Story", "토이 스토리, 영화 제목"]], "27": [["turn of events", "상황의 변화"], ["NeXT", "넥스트, 잡스가 세운 회사"], ["at the heart of", "~의 핵심에"]], "31": [["hits you in the head with a brick", "벽돌로 머리를 치다. 삶에서 큰 충격을 받는다는 비유"]], "33": [["kept me going", "내가 계속 나아갈 수 있게 했다"]], "34": [["got to", "~해야 한다"]], "35": [["as true for your work as it is for your lovers", "사랑하는 사람에게도 일에도 똑같이 해당한다"]], "36": [["is going to", "~할 것이다"]], "38": [["keep looking", "계속 찾아보다"]], "40": [["matters of the heart", "마음이 움직이는 일, 사랑에 관한 일"]], "41": [["as the years roll on", "세월이 흐를수록"]], "42": [["keep looking", "계속 찾아보다"]]};
 const $ = id => document.getElementById(id);
 let sentence = 0;
 let word = 0;
@@ -127,8 +133,65 @@ function speak(text, rate) {
   speechSynthesis.speak(message);
 }
 
+function appendWordButton(container, word, onSelect) {
+  const button = document.createElement('button');
+  button.className = 'tapWord';
+  button.type = 'button';
+  button.textContent = word;
+  button.setAttribute('aria-pressed', 'false');
+  button.onclick = () => {
+    container.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+    button.setAttribute('aria-pressed', 'true');
+    onSelect();
+  };
+  container.append(button);
+}
+
+function renderSentenceWords(text) {
+  const box = $('sentenceText');
+  const lookup = $('wordLookup');
+  box.replaceChildren();
+  lookup.replaceChildren();
+  lookup.hidden = true;
+  const context = phraseGloss[sentence + 1] || [];
+  let end = 0;
+  for (const match of text.matchAll(/\$?\d+(?:,\d+)*|[a-zA-Z]+(?:[’'][a-zA-Z]+)*/g)) {
+    const token = match[0];
+    box.append(text.slice(end, match.index));
+    end = match.index + token.length;
+    appendWordButton(box, token, () => {
+      const key = token.toLowerCase().replace('’', "'");
+      const name = document.createElement('strong');
+      name.lang = 'en';
+      name.textContent = token;
+      const phrase = context.find(([part]) => {
+        let start = text.indexOf(part);
+        while (start !== -1) {
+          if (match.index >= start && endOfToken <= start + part.length) return true;
+          start = text.indexOf(part, start + part.length);
+        }
+        return false;
+      });
+      lookup.replaceChildren(name, ' · ' + wordGloss[key]);
+      if (phrase) {
+        const detail = document.createElement('span');
+        detail.style.display = 'block';
+        const expression = document.createElement('strong');
+        expression.lang = 'en';
+        expression.textContent = phrase[0];
+        detail.append(expression, ' · ' + phrase[1]);
+        lookup.append(detail);
+      }
+      lookup.hidden = false;
+      speak(token, .8);
+    });
+    const endOfToken = end;
+  }
+  box.append(text.slice(end));
+}
+
 function renderRead() {
-  $('sentenceText').textContent = story[sentence][0];
+  renderSentenceWords(story[sentence][0]);
   $('translation').textContent = story[sentence][1];
   $('translation').hidden = true;
   $('translate').textContent = '뜻 보기';
@@ -159,7 +222,13 @@ function showTab(reading) {
 function renderWord() {
   const [en, ko] = vocabulary[word];
   $('wordProgress').textContent = `이 범위 ${word - rangeStart + 1} / ${rangeEnd - rangeStart} · 단어장 ${word + 1}번`;
-  $('wordText').textContent = writing ? ko : en;
+  const card = $('wordText');
+  card.replaceChildren();
+  if (writing) card.textContent = ko;
+  else en.split(' / ').forEach((part, index) => {
+    if (index) card.append(' / ');
+    appendWordButton(card, part, () => revealCardMeaning(part, ko.split(' / ')[index] || ko));
+  });
   $('wordText').lang = writing ? 'ko' : 'en';
   $('wordMeaning').textContent = ko;
   $('wordMeaning').hidden = true;
@@ -233,8 +302,22 @@ $('flashMode').onclick = () => setMode(false);
 $('writeMode').onclick = () => setMode(true);
 $('prevWord').onclick = () => moveWord(word - 1);
 $('nextWord').onclick = () => moveWord(word + 1);
-$('wordAudio').onclick = () => speak(vocabulary[word][0].replace(' / ', '. '), .82);
-$('showMeaning').onclick = () => toggleMeaning($('wordMeaning'), $('showMeaning'));
+function revealCardMeaning(spoken, meaning) {
+  $('wordMeaning').textContent = meaning;
+  $('wordMeaning').hidden = false;
+  $('showMeaning').textContent = '뜻 숨기기';
+  $('showMeaning').setAttribute('aria-expanded', 'true');
+  speak(spoken, .82);
+}
+$('wordAudio').onclick = () => {
+  const [en, ko] = vocabulary[word];
+  $('wordText').querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+  revealCardMeaning(en.replace(' / ', '. '), ko);
+};
+$('showMeaning').onclick = () => {
+  if ($('wordMeaning').hidden) $('wordMeaning').textContent = vocabulary[word][1];
+  toggleMeaning($('wordMeaning'), $('showMeaning'));
+};
 $('writeForm').onsubmit = event => {
   event.preventDefault();
   const answer = normalize($('answer').value);
